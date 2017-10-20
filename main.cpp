@@ -9,6 +9,7 @@ typedef std::vector<std::pair<uintmax_t, uintmax_t> > ChunkRanges;
 
 const uintmax_t kBytesInMb = 1024 * 1024;
 const int kMinInt = std::numeric_limits<int>::min();
+const uintmax_t kDefaultOutputFileSizeMb = 2000;
 
 void thread_func(const char* data, uintmax_t size, int* max) {
   const int* start = reinterpret_cast<const int*>(data);
@@ -97,17 +98,40 @@ void winapi_func(const std::string& path_to_data, int thread_count) {
   CloseHandle(hFile);
 }
 
+void Generate(const std::string& path, uintmax_t size, int min_int, int max_int) {
+  std::ofstream out_file;
+  out_file.open(path, std::ios::out | std::ios::binary | std::ios::trunc);
+  if (!out_file.is_open()) {
+    std::cout << "couldn't open file\n";
+    return;
+  }
+  //how much ints
+  uintmax_t numb_count = size / 4;
+  std::random_device rd;
+  std::mt19937 gen(rd());
+  std::uniform_int_distribution<int> uid(min_int, max_int);
+  for (uintmax_t i = 0; i < numb_count; ++i) {
+    int number = uid(gen);
+    out_file.write(reinterpret_cast<const char*>(&number), sizeof(number));
+  }
+}
+
 int main(int argc, char* argv[]) {
   std::string path_to_data;
-  int thread_count;
+  int thread_count = 1;
   int chunk_size_opt;
+  int min_int = kMinInt;
+  int max_int = std::numeric_limits<int>::max();
   bool chunk_size_present = false;
   po::options_description desc("General options");
   desc.add_options()
+    ("min,l", po::value<int>(&min_int), "The minimum number to generate")
+    ("max,r", po::value<int>(&max_int), "The maximum number to generate")
+    ("gen,g", "Generate a file with random binary numbers")
     ("help,h", "Show help")
-    ("file,f", po::value<std::string>(&path_to_data)->required(), "Input file with data")
-    ("threads,t", po::value<int>(&thread_count)->required(), "How much threads is used to perform algorithm")
-    ("chunk,c", po::value<int>(&chunk_size_opt), "Chunk size in megabytes");
+    ("file,f", po::value<std::string>(&path_to_data)->required(), "Input/output file with data")
+    ("threads,t", po::value<int>(&thread_count), "How much threads is used to perform algorithm")
+    ("chunk,c", po::value<int>(&chunk_size_opt), "Chunk/output file size in megabytes");
   po::variables_map vm;
 
   try {
@@ -123,6 +147,13 @@ int main(int argc, char* argv[]) {
     po::notify(vm);
   } catch (...) {
     std::cerr << "error, usage: -h or --help" << std::endl;
+    return 0;
+  }
+
+  if (vm.count("gen")) {
+    uintmax_t file_size =
+      (chunk_size_present ? chunk_size_opt : kDefaultOutputFileSizeMb) * kBytesInMb;
+    Generate(path_to_data, file_size, min_int, max_int);
     return 0;
   }
 
