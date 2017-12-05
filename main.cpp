@@ -42,7 +42,7 @@ int boost_func(const std::string& path_to_data,
   std::vector<std::thread> threads(thread_count);
   std::vector<int> maxs(thread_count, kMinInt);
   for (int i = 0; i < thread_count - 1; ++i) {
-    threads[i] = std::thread(thread_func, data_ptr + i * thr_chunk_size, thr_chunk_size, &maxs[0]);
+    threads[i] = std::thread(thread_func, data_ptr + i * thr_chunk_size, thr_chunk_size, &maxs[i]);
   }
   thread_func(data_ptr + (thread_count - 1) * thr_chunk_size,
               thr_chunk_size + tail_size, &maxs[thread_count - 1]);
@@ -158,18 +158,14 @@ int main(int argc, char* argv[]) {
   }
 
   uintmax_t file_size = fs::file_size(path_to_data);
-  int chunk_size = (chunk_size_present ? chunk_size_opt : 500) * kBytesInMb;
+  const uintmax_t CHUNK_SIZE = (chunk_size_present ? chunk_size_opt : 500) * kBytesInMb;
 
   ChunkRanges ranges;
-  int chunk_count = static_cast<int>(file_size / chunk_size);
+  int chunk_count = static_cast<int>((file_size + (CHUNK_SIZE - 1) ) / CHUNK_SIZE);
   for (int i = 0; i < chunk_count; ++i) {
-    ranges.push_back(
-      std::pair<uintmax_t, uintmax_t>(i * chunk_size, chunk_size));
-  }
-  uintmax_t tail = file_size - chunk_count * chunk_size;
-  if (tail > 0) {
-    ranges.push_back(
-      std::pair<uintmax_t, uintmax_t>(chunk_count * chunk_size, tail));
+    const uintmax_t chunk_offset = i * CHUNK_SIZE;
+    const uintmax_t chunk_size = std::min(CHUNK_SIZE, file_size - chunk_offset);
+    ranges.push_back(std::pair<uintmax_t, uintmax_t>(chunk_offset, chunk_size));
   }
 
   DWORD start_tick = ::GetTickCount();
