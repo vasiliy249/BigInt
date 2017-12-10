@@ -1,0 +1,17 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "ru.spbu.pt.bd.grpc";
+option java_outer_classname = "SampleServiceProto";
+
+service SampleService {
+    rpc Factorize(FactorRequest) returns (FactorResponse) {}
+}
+
+message FactorRequest {
+  int32 number = 1;
+}
+
+message FactorResponse {
+  repeated int32 factors = 1;
+}
