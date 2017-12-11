@@ -4,6 +4,9 @@ import grpc
 import simple_pb2_grpc
 import simple_pb2
 from concurrent.futures import ThreadPoolExecutor
+import threading
+
+locker = threading.Lock()
 
 
 def gen_file():
@@ -20,14 +23,11 @@ def read_file():
 
 def thread_func(in_number, in_file, in_stub):
     resp = in_stub.Factorize(simple_pb2.FactorRequest(number=in_number))
-    factors = list(resp.factors)
-    str_to_write = str(in_number) + '\t'
-    for num in factors:
-        str_to_write += str(num) + ','
-    if str_to_write.endswith(','):
-        str_to_write = str_to_write[:-1]
-    str_to_write += '\n'
+    factors = [str(factor) for factor in resp.factors]
+    str_to_write = str(in_number) + '\t' + (','.join(factors)) + '\n'
+    locker.acquire()
     in_file.write(str_to_write)
+    locker.release()
 
 
 if __name__ == '__main__':
