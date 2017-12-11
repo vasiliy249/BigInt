@@ -26,7 +26,6 @@ def get_string_to_write(in_number, in_stub):
 
 def thread_func_queue(in_number, in_queue, in_stub):
     in_queue.put(get_string_to_write(in_number, in_stub))
-    return 4
 
 
 def thread_func_lock(in_number, in_file, in_stub):
